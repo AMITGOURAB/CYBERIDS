@@ -1,0 +1,200 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - CyberDefender 2.0</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f3f4f6;
+            color: #333333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        h1 {
+            color: #1a1a2e;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #1a1a2e;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        button {
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:hover {
+            background: #059669;
+        }
+        #result {
+            margin-top: 20px;
+            color: #6b7280;
+        }
+        .stats-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stat-tile {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            text-align: left;
+            transition: transform 0.3s, background 0.3s;
+            border: 1px solid #e5e7eb;
+        }
+        .stat-tile:hover {
+            transform: translateY(-5px);
+            background: #ffffff;
+        }
+        .stat-tile .icon {
+            font-size: 2em;
+            color: #6366f1;
+            margin-bottom: 10px;
+        }
+        .stat-tile h3 {
+            font-size: 1.5em;
+            color: #1a1a2e;
+            margin: 0 0 10px;
+        }
+        .stat-tile p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Login to CyberDefender 2.0</h1>
+        <div class="input-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="Enter username">
+        </div>
+        <div class="input-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+        <button onclick="attemptLogin()">Login</button>
+        <div id="result"></div>
+    </div>
+    <div class="stats-section">
+        <div class="stat-tile">
+            <div class="icon">🔒</div>
+            <h3>ML Login Security</h3>
+            <p>ML model detects brute force attempts, ensuring secure authentication.</p>
+        </div>
+        <div class="stat-tile">
+            <div class="icon">🛡️</div>
+            <h3>Threat Protection</h3>
+            <p>Advanced ML algorithms safeguard against cyber threats in real-time.</p>
+        </div>
+    </div>
+    <script>
+        console.log('Initializing Login Page...');
+        function attemptLogin() {
+            try {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const resultDiv = document.getElementById('result');
+
+                fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            localStorage.setItem('isLoggedIn', 'true');
+                            window.location.href = 'index.html';
+                        } else {
+                            resultDiv.textContent = data.message;
+                        }
+                        console.log('Login response:', data);
+                    })
+                    .catch(error => {
+                        console.error('Login failed:', error);
+                        resultDiv.textContent = 'Error during login. Check console.';
+                    });
+            } catch (e) {
+                console.error('Login failed:', e);
+                document.getElementById('result').textContent = 'Error during login. Check console.';
+            }
+        }
+    </script>
+</body>
+</html>

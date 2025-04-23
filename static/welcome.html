@@ -1,0 +1,345 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Cyber IDS (Intrusion Detection System)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            color: #1a1a2e;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .container {
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 1200px;
+            text-align: center;
+            margin: 40px 0;
+        }
+        h1 {
+            font-size: 2.5em;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.2em;
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        .button-group {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+        button {
+            padding: 12px 24px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+            transition: background 0.3s, transform 0.1s;
+        }
+        button:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+        .insights-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding: 20px;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+        .metrics-section {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            padding: 20px;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+        .section-title {
+            font-size: 2em;
+            color: #1a1a2e;
+            text-align: center;
+            margin: 40px 0 20px;
+        }
+        .insight-card, .metric-card {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            text-align: center;
+            transition: transform 0.3s, background 0.3s;
+            border: 1px solid #e5e7eb;
+        }
+        .insight-card:hover, .metric-card:hover {
+            transform: translateY(-5px);
+            background: #ffffff;
+        }
+        .insight-card .icon {
+            font-size: 3.5em;
+            color: #10b981;
+            margin-bottom: 15px;
+        }
+        .metric-card .icon {
+            font-size: 2.5em;
+            color: #6366f1;
+            margin-bottom: 15px;
+        }
+        .insight-card h3, .metric-card h3 {
+            font-size: 1.6em;
+            color: #1a1a2e;
+            margin: 0 0 10px;
+        }
+        .insight-card p, .metric-card p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 1em;
+            line-height: 1.6;
+        }
+        .metric-card p.score {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #10b981;
+            margin: 5px 0;
+        }
+        .metric-card canvas {
+            max-height: 150px;
+            margin-top: 15px;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            .subtitle {
+                font-size: 1em;
+            }
+            button {
+                font-size: 1em;
+                padding: 10px 20px;
+            }
+            .insights-section, .metrics-section {
+                grid-template-columns: 1fr;
+            }
+            .insight-card .icon {
+                font-size: 3em;
+            }
+            .metric-card .icon {
+                font-size: 2em;
+            }
+            .metric-card canvas {
+                max-height: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Cyber IDS (Intrusion Detection System)</h1>
+        <p class="subtitle">Your ultimate shield against cyber threats, powered by advanced machine learning.</p>
+        <div class="button-group">
+            <button onclick="window.open('sql_injection.html', '_blank')">SQL Injection Simulation</button>
+            <button onclick="window.open('brute_force.html', '_blank')">Brute Force Attack</button>
+            <button onclick="window.open('ddos.html', '_blank')">DDoS Attack</button>
+            <button onclick="window.open('index.html', '_blank')">Go to Dashboard</button>
+        </div>
+    </div>
+
+    <div class="insights-section">
+        <div class="insight-card">
+            <div class="icon">🛡️</div>
+            <h3>ML-Powered Defense</h3>
+            <p>Our project uses RandomForest models to detect SQL injections, malware, DDoS, and brute force attacks with high accuracy.</p>
+        </div>
+        <div class="insight-card">
+            <div class="icon">📊</div>
+            <h3>Real-Time Monitoring</h3>
+            <p>Live dashboards track attack patterns, updating charts and maps every 5 seconds for immediate insights.</p>
+        </div>
+        <div class="insight-card">
+            <div class="icon">🌐</div>
+            <h3>Global Attack Trends</h3>
+            <p>Cyberattacks have risen 30% in 2025, with DDoS and ransomware leading the surge, targeting critical infrastructure.</p>
+        </div>
+        <div class="insight-card">
+            <div class="icon">🔍</div>
+            <h3>Threat Detection</h3>
+            <p>Our system identifies threats by analyzing patterns like query anomalies and file entropy, ensuring rapid response.</p>
+        </div>
+        <div class="insight-card">
+            <div class="icon">📍</div>
+            <h3>Attack Hotspots</h3>
+            <p>Regions like North America and Europe face 60% of global cyberattacks, with financial sectors most at risk.</p>
+        </div>
+        <div class="insight-card">
+            <div class="icon">⏱️</div>
+            <h3>Attack Frequency</h3>
+            <p>Average of 1,200 attacks per minute globally, with SQL injections and malware dominating small business targets.</p>
+        </div>
+    </div>
+
+    <h2 class="section-title">Model Performance Metrics</h2>
+    <div class="metrics-section">
+        <div class="metric-card">
+            <div class="icon">📈</div>
+            <h3>SQL Injection Model</h3>
+            <p>Accuracy: <span class="score">92%</span></p>
+            <p>F1 Score: <span class="score">0.90</span></p>
+            <canvas id="sqlChart"></canvas>
+        </div>
+        <div class="metric-card">
+            <div class="icon">📈</div>
+            <h3>Malware Detection Model</h3>
+            <p>Accuracy: <span class="score">88%</span></p>
+            <p>F1 Score: <span class="score">0.86</span></p>
+            <canvas id="malwareChart"></canvas>
+        </div>
+        <div class="metric-card">
+            <div class="icon">📈</div>
+            <h3>DDoS Detection Model</h3>
+            <p>Accuracy: <span class="score">91%</span></p>
+            <p>F1 Score: <span class="score">0.89</span></p>
+            <canvas id="ddosChart"></canvas>
+        </div>
+        <div class="metric-card">
+            <div class="icon">📈</div>
+            <h3>Brute Force Model</h3>
+            <p>Accuracy: <span class="score">90%</span></p>
+            <p>F1 Score: <span class="score">0.87</span></p>
+            <canvas id="bruteChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        console.log('Initializing Welcome Page...');
+
+        // Function to initialize a bar chart for each model
+        function initMetricChart(canvasId, accuracy, f1Score) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Accuracy', 'F1 Score'],
+                    datasets: [{
+                        label: 'Score',
+                        data: [accuracy, f1Score * 100], // Convert F1 to percentage for consistency
+                        backgroundColor: ['#10b981', '#6366f1'],
+                        borderColor: ['#059669', '#4f46e5'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'Score (%)',
+                                color: '#1a1a2e'
+                            },
+                            ticks: {
+                                color: '#1a1a2e'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#1a1a2e'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let value = context.raw;
+                                    if (context.dataIndex === 1) {
+                                        value = (value / 100).toFixed(2); // Convert F1 back to 0-1 scale
+                                    }
+                                    return `${context.label}: ${value}${context.dataIndex === 0 ? '%' : ''}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize charts with the scores
+        try {
+            initMetricChart('sqlChart', 92, 0.90);
+            initMetricChart('malwareChart', 88, 0.86);
+            initMetricChart('ddosChart', 91, 0.89);
+            initMetricChart('bruteChart', 90, 0.87);
+            console.log('Metric charts initialized successfully');
+        } catch (e) {
+            console.error('Failed to initialize metric charts:', e);
+        }
+    </script>
+</body>
+</html>

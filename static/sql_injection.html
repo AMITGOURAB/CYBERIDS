@@ -1,0 +1,148 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Injection Simulation</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f3f4f6;
+            color: #333333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+        h1 {
+            color: #1a1a2e;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #1a1a2e;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        button {
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:hover {
+            background: #059669;
+        }
+        #result {
+            margin-top: 20px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>SQL Injection Simulation</h1>
+        <div class="input-group">
+            <label for="query">SQL Query</label>
+            <input type="text" id="query" placeholder="Enter SQL query (e.g., OR 1=1)">
+        </div>
+        <button onclick="checkInjection()">Submit Query</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        console.log('Initializing SQL Injection Simulation...');
+
+        function checkInjection() {
+            try {
+                const query = document.getElementById('query').value;
+                const resultDiv = document.getElementById('result');
+
+                fetch('/api/sql_injection', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        query,
+                        location: { lat: Math.random() * 180 - 90, lng: Math.random() * 360 - 180 }
+                    })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        resultDiv.textContent = data.message;
+                        console.log('SQL injection response:', data);
+                    })
+                    .catch(error => {
+                        console.error('SQL injection check failed:', error);
+                        resultDiv.textContent = 'Error during simulation. Check console.';
+                    });
+            } catch (e) {
+                console.error('SQL injection check failed:', e);
+                document.getElementById('result').textContent = 'Error during simulation. Check console.';
+            }
+        }
+    </script>
+</body>
+</html>
